@@ -1,0 +1,102 @@
+version: '3.4'
+
+
+
+services:
+
+    db:
+
+        image: mysql:5.7
+
+        restart: always
+
+        #command: --init-file /db/init.sql --character-set-server=utf8mb4 --explicit_defaults_for_timestamp --sql-mode=""
+
+        environment:
+
+          - MYSQL_ROOT_PASSWORD=pqWMzCi4raKtbtnwRvU9o
+
+          - TZ=Asia/Shanghai
+
+        ports:
+
+          - 3306:3306
+
+        volumes:
+
+          - ./db:/db
+
+          - ./db/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf:ro
+
+    mongo:
+
+      image: mongo:latest
+
+      #command: mongod --smallfiles
+
+      ports:
+
+        - 27017:27017
+
+      depends_on:
+
+        - mongo_seed
+
+
+
+    mongo_seed:
+
+      build:
+
+        context: ops
+
+        dockerfile: mongo/Dockerfile_mongo_seed
+
+      entrypoint: /wait-for-it.sh mongo:27017 --
+
+      command: mongoimport --host mongo --db local --collection projects --type json --file /init.json
+
+    redis:
+
+      image: redis:4
+
+      restart: always
+
+      ports:
+
+        - 6379:6379
+
+
+    dev:
+
+        image: registry-vpc.cn-hangzhou.aliyuncs.com/jzjn-mirror-test/energy-api:v1
+
+        ports:
+
+          - 8081:8080
+
+        volumes:
+
+          - ".:/src"
+
+          - /src/node_modules/
+
+        environment:
+
+          - TZ=Asia/Shanghai
+
+          - RDS_READ=[{"host":"rm-bp1ei3p867z9m8glt.mysql.rds.aliyuncs.com","port":3306,"username":"root","password":"pqWMzCi4raKtbtnwRvU9o","database":"energy"}]
+
+          - RDS_WRITE={"host":"rm-bp1ei3p867z9m8glt.mysql.rds.aliyuncs.com","port":3306,"username":"root","password":"pqWMzCi4raKtbtnwRvU9o","database":"energy"}
+
+          - MONGODB_URL=mongodb://energy:ttULeRa2RdbcouHFkkZje@dds-bp1beaec5447bf641.mongodb.rds.aliyuncs.com:3717,dds-bp1beaec5447bf642.mongodb.rds.aliyuncs.com:3717/admin?replicaSet=mgset-15906737
+
+          - REDIS_URL=redis://r-bp12mbo7un7beq2t5i.redis.rds.aliyuncs.com:6379
+
+        depends_on:
+
+          - db
+
+          - mongo
+
+          - redis
